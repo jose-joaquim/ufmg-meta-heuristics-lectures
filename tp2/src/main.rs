@@ -2,6 +2,7 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
+use rand::seq::IteratorRandom;
 use std::collections::HashSet;
 use std::env;
 use std::fs;
@@ -9,6 +10,7 @@ use std::fs;
 type Solution = (f64, Vec<usize>);
 
 fn read_and_build_adjacency_matrix(file_path: &str) -> Option<Vec<Vec<f64>>> {
+    println!("Reading Instance");
     let input: Vec<String> = fs::read_to_string(file_path)
         .unwrap()
         .lines()
@@ -41,24 +43,62 @@ fn read_and_build_adjacency_matrix(file_path: &str) -> Option<Vec<Vec<f64>>> {
         }
     }
 
+    println!("Read instance");
+
     return Some(adj);
 }
 
-fn explore_neighborhood(inc: &Solution, k: usize) -> Solution {
-    return (0.0, vec![]);
+fn explore_neighborhood(adj: &Vec<Vec<f64>>, inc: &Solution, mut k: usize) -> Solution {
+    println!("Exploring neighborhood");
+    println!("inc solution is {:?}", inc.1);
+
+    let (mut cost, mut tour): (f64, Vec<usize>) = (0.0, Vec::new());
+    while k > 0 {
+        (cost, tour) = (inc.0, inc.1.clone());
+        let mut rng = rand::thread_rng();
+        let range = 1..inc.1.len() - 1;
+
+        // 1. Select the sub-tour that is going to be reversed
+        let (sub_i, sub_j): (usize, usize) = {
+            let mut sub_tour: Vec<usize> = range.choose_multiple(&mut rng, 2);
+            if sub_tour[0] > sub_tour[1] {
+                sub_tour.swap(0, 1);
+            }
+
+            (sub_tour[0], sub_tour[1])
+        };
+
+        // 2. Update solution info
+        tour = tour[..=sub_i]
+            .iter()
+            .chain(tour[sub_i + 1..=sub_j].iter().rev())
+            .chain(tour[sub_j + 1..].iter())
+            .copied()
+            .collect();
+
+        assert_eq!(inc.1.len(), tour.len());
+
+        cost = tour.windows(2).map(|l| adj[l[0]][l[1]]).sum();
+        cost += adj[tour[tour.len() - 1]][tour[0]];
+        k -= 1;
+    }
+
+    println!("Solution OF {}, tour {:?}", cost, tour);
+    return (cost, tour);
 }
 
-fn vnd(adj: &Vec<Vec<f64>>, start: usize, k_max: usize, root: usize) -> Solution {
+fn vnd(adj: &Vec<Vec<f64>>, k_max: usize, root: usize) -> Solution {
     // TODO: must guarantee that k_max <= adj.len()
     let mut incumbent: Solution = run_nearest_neighbor(&adj, root);
 
     loop {
         let mut k: usize = 1;
         let mut improved: bool = false;
-        while k < k_max {
-            let local_optima = explore_neighborhood(&incumbent, k);
+        while k <= k_max {
+            improved = false;
+            let local_optima = explore_neighborhood(&adj, &incumbent, k);
 
-            if local_optima.1 > incumbent.1 {
+            if local_optima.0.lt(&incumbent.0) {
                 improved = true;
                 incumbent = local_optima;
                 k = 1;
@@ -75,19 +115,18 @@ fn vnd(adj: &Vec<Vec<f64>>, start: usize, k_max: usize, root: usize) -> Solution
 }
 
 fn run_nearest_neighbor(adj: &Vec<Vec<f64>>, start: usize) -> Solution {
+    println!("Running CH");
     let mut val: f64 = 0.0;
     let n = adj.len();
 
     let mut route: Vec<usize> = vec![];
-    route.push(start);
-
-    // 1. Compute initial solution
 
     let mut visited: HashSet<usize> = HashSet::new();
     let mut current: usize = 0;
 
     visited.insert(current);
     loop {
+        route.push(current);
         let mut next: Option<usize> = None;
         let mut dist_next: f64 = 100000.0;
         for j in 0..n {
@@ -95,7 +134,7 @@ fn run_nearest_neighbor(adj: &Vec<Vec<f64>>, start: usize) -> Solution {
                 continue;
             }
 
-            if adj[current][j] < dist_next && !visited.contains(&j) {
+            if adj[current][j].lt(&dist_next) && !visited.contains(&j) {
                 dist_next = adj[current][j];
                 next = Some(j);
             }
@@ -110,12 +149,8 @@ fn run_nearest_neighbor(adj: &Vec<Vec<f64>>, start: usize) -> Solution {
         }
     }
 
-    // println!(
-    //     "initial objective function is {}, visited {} nodes",
-    //     val,
-    //     visited.len()
-    // );
-
+    val += adj[route[route.len() - 1]][start];
+    println!("Built solution with OF {:.2}", val);
     return (val, route);
 }
 
@@ -124,7 +159,8 @@ fn main() {
 
     let adj = read_and_build_adjacency_matrix(&args[1]);
     let root: usize = 0;
+    let k_max: usize = 10;
 
-    let ans: Solution = run_nearest_neighbor(&adj.unwrap(), root);
+    let ans: Solution = vnd(&adj.unwrap(), k_max, root);
     println!("{} & {:.2} \\\\", args[1], ans.0);
 }
