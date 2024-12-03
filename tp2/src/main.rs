@@ -1,3 +1,4 @@
+#![allow(unused_assignments)]
 #![allow(unused_mut)]
 #![allow(dead_code)]
 #![allow(unused_variables)]
@@ -49,8 +50,8 @@ fn read_and_build_adjacency_matrix(file_path: &str) -> Option<Vec<Vec<f64>>> {
 }
 
 fn explore_neighborhood(adj: &Vec<Vec<f64>>, inc: &Solution, mut k: usize) -> Solution {
-    println!("Exploring neighborhood");
-    println!("inc solution is {:?}", inc.1);
+    // println!("Exploring neighborhood");
+    // println!("inc solution is {:?}", inc.1);
 
     let (mut cost, mut tour): (f64, Vec<usize>) = (0.0, Vec::new());
     while k > 0 {
@@ -83,7 +84,6 @@ fn explore_neighborhood(adj: &Vec<Vec<f64>>, inc: &Solution, mut k: usize) -> So
         k -= 1;
     }
 
-    println!("Solution OF {}, tour {:?}", cost, tour);
     return (cost, tour);
 }
 
@@ -99,6 +99,8 @@ fn vnd(adj: &Vec<Vec<f64>>, k_max: usize, root: usize) -> Solution {
             let local_optima = explore_neighborhood(&adj, &incumbent, k);
 
             if local_optima.0.lt(&incumbent.0) {
+                println!("IMPROVED SOLUTION");
+                println!("Solution OF {}, tour {:?}", local_optima.0, local_optima.1);
                 improved = true;
                 incumbent = local_optima;
                 k = 1;
@@ -159,8 +161,8 @@ fn main() {
 
     let adj = read_and_build_adjacency_matrix(&args[1]);
     let root: usize = 0;
-    let k_max: usize = 10;
+    let k_max: usize = 120;
 
     let ans: Solution = vnd(&adj.unwrap(), k_max, root);
-    println!("{} & {:.2} \\\\", args[1], ans.0);
+    println!("{}: {:.2}", args[1], ans.0);
 }
