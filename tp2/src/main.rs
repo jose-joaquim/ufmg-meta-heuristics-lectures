@@ -7,11 +7,12 @@ use rand::seq::IteratorRandom;
 use std::collections::HashSet;
 use std::env;
 use std::fs;
+use std::time::Instant;
 
 type Solution = (f64, Vec<usize>);
 
 fn read_and_build_adjacency_matrix(file_path: &str) -> Option<Vec<Vec<f64>>> {
-    println!("Reading Instance");
+    // println!("Reading Instance");
     let input: Vec<String> = fs::read_to_string(file_path)
         .unwrap()
         .lines()
@@ -22,6 +23,7 @@ fn read_and_build_adjacency_matrix(file_path: &str) -> Option<Vec<Vec<f64>>> {
     for i in 6..input.len() - 1 {
         let mut parts = input[i].trim().split_whitespace();
         let words: Vec<&str> = input[i].trim().split_whitespace().collect();
+        println!("{:?}", words);
 
         let x: f64 = words[1].parse().unwrap();
         let y: f64 = words[2].parse().unwrap();
@@ -44,7 +46,7 @@ fn read_and_build_adjacency_matrix(file_path: &str) -> Option<Vec<Vec<f64>>> {
         }
     }
 
-    println!("Read instance");
+    // println!("Read instance");
 
     return Some(adj);
 }
@@ -87,10 +89,15 @@ fn explore_neighborhood(adj: &Vec<Vec<f64>>, inc: &Solution, mut k: usize) -> So
     return (cost, tour);
 }
 
-fn vnd(adj: &Vec<Vec<f64>>, k_max: usize, root: usize) -> Solution {
+fn vnd(adj: &Vec<Vec<f64>>, k_max: usize, root: usize) -> (Solution, f64, Solution, f64) {
     // TODO: must guarantee that k_max <= adj.len()
-    let mut incumbent: Solution = run_nearest_neighbor(&adj, root);
+    let start = Instant::now(); // Start the timer
+    let initial_sol: Solution = run_nearest_neighbor(&adj, root);
+    let ch_time = start.elapsed().as_secs_f64();
 
+    let mut incumbent = (initial_sol.0, initial_sol.1.clone());
+
+    let vnd_start = Instant::now();
     loop {
         let mut k: usize = 1;
         let mut improved: bool = false;
@@ -99,8 +106,8 @@ fn vnd(adj: &Vec<Vec<f64>>, k_max: usize, root: usize) -> Solution {
             let local_optima = explore_neighborhood(&adj, &incumbent, k);
 
             if local_optima.0.lt(&incumbent.0) {
-                println!("IMPROVED SOLUTION");
-                println!("Solution OF {}, tour {:?}", local_optima.0, local_optima.1);
+                // println!("IMPROVED SOLUTION");
+                // println!("Solution OF {}, tour {:?}", local_optima.0, local_optima.1);
                 improved = true;
                 incumbent = local_optima;
                 k = 1;
@@ -113,11 +120,12 @@ fn vnd(adj: &Vec<Vec<f64>>, k_max: usize, root: usize) -> Solution {
             break;
         }
     }
-    return incumbent;
+    let vnd_time = vnd_start.elapsed().as_secs_f64();
+    return (initial_sol, ch_time, incumbent, vnd_time);
 }
 
 fn run_nearest_neighbor(adj: &Vec<Vec<f64>>, start: usize) -> Solution {
-    println!("Running CH");
+    // println!("Running CH");
     let mut val: f64 = 0.0;
     let n = adj.len();
 
@@ -152,7 +160,7 @@ fn run_nearest_neighbor(adj: &Vec<Vec<f64>>, start: usize) -> Solution {
     }
 
     val += adj[route[route.len() - 1]][start];
-    println!("Built solution with OF {:.2}", val);
+    // println!("Built solution with OF {:.2}", val);
     return (val, route);
 }
 
@@ -163,6 +171,12 @@ fn main() {
     let root: usize = 0;
     let k_max: usize = 120;
 
-    let ans: Solution = vnd(&adj.unwrap(), k_max, root);
-    println!("{}: {:.2}", args[1], ans.0);
+    // let ans: (Solution, f64, Solution, f64) = vnd(&adj.unwrap(), k_max, root);
+
+    let (ch_sol, ch_time, vnd_sol, vnd_time): (Solution, f64, Solution, f64) =
+        vnd(&adj.unwrap(), k_max, root);
+    println!(
+        "{} & {:.2} & {:.2} & {:.2} & {:.2} \\\\",
+        args[1], ch_sol.0, ch_time, vnd_sol.0, vnd_time
+    );
 }
