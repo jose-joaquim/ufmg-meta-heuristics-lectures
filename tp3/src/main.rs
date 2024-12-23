@@ -50,7 +50,7 @@ fn read_and_build_adjacency_matrix(file_path: &str) -> Option<Vec<Vec<f64>>> {
 }
 
 fn stop_criteria_reached(start: Instant) -> bool {
-    return start.elapsed().as_secs_f64() > 15.0;
+    return start.elapsed().as_secs_f64() > 30.0;
 }
 
 fn selection(pop: &Population) -> Population {
@@ -220,7 +220,7 @@ fn main() {
 
     let adj = read_and_build_adjacency_matrix(&args[1]);
     let root: usize = 0;
-    let pop_size = 15;
+    let pop_size = 100;
 
     let (init_pop, population) = genetic_algorithm(&adj.unwrap(), 0, pop_size);
 
